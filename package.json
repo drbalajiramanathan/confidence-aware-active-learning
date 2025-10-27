@@ -1,0 +1,22 @@
+{
+  "name": "skin-cancer-model",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "rollup -c",
+    "build": "rollup -c",
+    "start": "sirv public --single"
+  },
+  "dependencies": {
+    "d3": "^7.0.0",
+    "plotly.js": "^2.10.0",
+    "svelte": "^3.44.0",
+    "@tensorflow/tfjs": "^3.12.0"
+  },
+  "devDependencies": {
+    "rollup": "^2.56.0",
+    "rollup-plugin-svelte": "^7.1.0",
+    "rollup-plugin-terser": "^7.0.2",
+    "sirv-cli": "^1.0.0"
+  }
+}
