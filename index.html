@@ -10,32 +10,83 @@
     <input type="file" id="imageUpload" accept="image/*">
     <br>
     <img id="uploadedImage" alt="Upload preview" style="width: 224px; height: 224px; margin-top: 10px; border: 1px solid #ccc;">
-
+<br>
+<button id="predictButton" style="margin-top: 10px; font-size: 16px;">Predict</button>
+<p id="result" style="font-weight: bold; font-size: 18px; margin-top: 10px;">Result:</p>
     <p id="status">Loading model...</p>
 
-    <script>
+   <script>
+    // --- HTML Elements ---
     const status = document.getElementById('status');
     const imageUpload = document.getElementById('imageUpload');
     const uploadedImage = document.getElementById('uploadedImage');
-    let model; // Store the loaded model globally
+    const predictButton = document.getElementById('predictButton');
+    const resultElement = document.getElementById('result');
 
-    // 1. Image Preprocessing Function
+    // --- Model and Class Labels ---
+    let model;
+    // Classes from HAM10000, in alphabetical order as Keras/TFjs loads them
+    const CLASS_LABELS = {
+        0: 'akiec (Actinic Keratoses)',
+        1: 'bcc (Basal Cell Carcinoma)',
+        2: 'bkl (Benign Keratosis-like)',
+        3: 'df (Dermatofibroma)',
+        4: 'mel (Melanoma)',
+        5: 'nv (Melanocytic Nevi)',
+        6: 'vasc (Vascular Lesions)'
+    };
+
+    // --- 1. Image Preprocessing Function ---
     function preprocessImage(imgElement) {
-        // Use tf.browser.fromPixels to convert the image to a tensor
-        // Resize it to 224x224
-        // Rescale pixel values from 0-255 to 0-1 (as done in training)
-        // Expand dimensions to create a batch of 1: [1, 224, 224, 3]
         return tf.tidy(() => {
             const tensor = tf.browser.fromPixels(imgElement)
                 .resizeNearestNeighbor([224, 224])
                 .toFloat()
-                .div(tf.scalar(255.0)) // Rescale to 1./255
-                .expandDims(); // Add batch dimension
+                .div(tf.scalar(255.0))
+                .expandDims();
             return tensor;
         });
     }
 
-    // 2. Event listener for file upload
+    // --- 2. Prediction Function ---
+    async function predictImage() {
+        if (!model) {
+            status.innerText = 'Error: Model is not loaded yet.';
+            return;
+        }
+        if (!uploadedImage.src || uploadedImage.src.endsWith('#')) {
+            status.innerText = 'Error: Please upload an image first.';
+            return;
+        }
+
+        status.innerText = 'Processing and predicting...';
+
+        // Preprocess the image
+        const tensor = preprocessImage(uploadedImage);
+
+        // Run prediction
+        const prediction = await model.predict(tensor);
+
+        // Get the prediction data (probabilities)
+        const data = await prediction.data();
+
+        // Find the index with the highest probability
+        const highestProbIndex = data.indexOf(Math.max(...data));
+        const confidence = data[highestProbIndex];
+        const predictedClass = CLASS_LABELS[highestProbIndex];
+
+        // Display the confidence-aware result
+        resultElement.innerText = `Result: ${predictedClass}
+Confidence: ${(confidence * 100).toFixed(2)}%`;
+
+        status.innerText = 'Prediction complete.';
+        
+        // Clean up tensors
+        tensor.dispose();
+        prediction.dispose();
+    }
+
+    // --- 3. Event Listeners ---
     imageUpload.addEventListener('change', event => {
         const file = event.target.files[0];
         if (file) {
@@ -43,32 +94,34 @@
             reader.onload = e => {
                 uploadedImage.src = e.target.result;
                 uploadedImage.style.display = 'block';
-                status.innerText = 'Image loaded. Ready for prediction.';
+                status.innerText = 'Image loaded. Click "Predict".';
+                resultElement.innerText = 'Result:'; // Clear previous result
             };
             reader.readAsDataURL(file);
         }
     });
+    
+    // Add listener for the predict button
+    predictButton.addEventListener('click', predictImage);
 
-    // 3. Model Loading Function (Slightly modified)
+    // --- 4. Model Loading Function ---
     async function loadModel() {
         try {
             const modelURL = './model/model.json';
             console.log('Attempting to load model from:', modelURL);
-
-            // Assign to the global 'model' variable
-            model = await tf.loadLayersModel(modelURL); 
-
+            model = await tf.loadLayersModel(modelURL);
+            
             console.log('Model Loaded Successfully');
             status.innerText = 'Model Loaded. Please upload an image.';
             model.summary();
-
+            
         } catch (error) {
             console.error('Error loading model:', error);
             status.innerText = 'Error loading model. See console (F12).';
         }
     }
-
-    // Run the model loader
+    
+    // Run the model loader on page load
     loadModel();
 </script>
 </body>
