@@ -15,7 +15,7 @@
 <p id="result" style="font-weight: bold; font-size: 18px; margin-top: 10px;">Result:</p>
     <p id="status">Loading model...</p>
 
-   <script>
+ <script>
     // --- HTML Elements ---
     const status = document.getElementById('status');
     const imageUpload = document.getElementById('imageUpload');
@@ -23,26 +23,18 @@
     const predictButton = document.getElementById('predictButton');
     const resultElement = document.getElementById('result');
 
-    // --- Model and Class Labels ---
+    // --- Model ---
     let model;
-    // Classes from HAM10000, in alphabetical order as Keras/TFjs loads them
-    const CLASS_LABELS = {
-        0: 'akiec (Actinic Keratoses)',
-        1: 'bcc (Basal Cell Carcinoma)',
-        2: 'bkl (Benign Keratosis-like)',
-        3: 'df (Dermatofibroma)',
-        4: 'mel (Melanoma)',
-        5: 'nv (Melanocytic Nevi)',
-        6: 'vasc (Vascular Lesions)'
-    };
 
     // --- 1. Image Preprocessing Function ---
     function preprocessImage(imgElement) {
+        // Preprocessing for MobileNetV2: resize to 224x224, 
+        // normalize pixels from 0-255 to 0-1.
         return tf.tidy(() => {
             const tensor = tf.browser.fromPixels(imgElement)
                 .resizeNearestNeighbor([224, 224])
                 .toFloat()
-                .div(tf.scalar(255.0))
+                .div(tf.scalar(255.0)) // Normalize 0-1
                 .expandDims();
             return tensor;
         });
@@ -61,27 +53,26 @@
 
         status.innerText = 'Processing and predicting...';
 
-        // Preprocess the image
         const tensor = preprocessImage(uploadedImage);
 
         // Run prediction
         const prediction = await model.predict(tensor);
 
-        // Get the prediction data (probabilities)
+        // Get the prediction data (probabilities for 1000 classes)
         const data = await prediction.data();
 
         // Find the index with the highest probability
         const highestProbIndex = data.indexOf(Math.max(...data));
         const confidence = data[highestProbIndex];
-        const predictedClass = CLASS_LABELS[highestProbIndex];
 
-        // Display the confidence-aware result
-        resultElement.innerText = `Result: ${predictedClass}
+        // Display the generic result
+        // This model is trained on ImageNet, not HAM10000.
+        // It will predict things like 'dog', 'cat', 'car'.
+        resultElement.innerText = `Result: ImageNet Class ID ${highestProbIndex}
 Confidence: ${(confidence * 100).toFixed(2)}%`;
 
         status.innerText = 'Prediction complete.';
         
-        // Clean up tensors
         tensor.dispose();
         prediction.dispose();
     }
@@ -101,19 +92,20 @@ Confidence: ${(confidence * 100).toFixed(2)}%`;
         }
     });
     
-    // Add listener for the predict button
     predictButton.addEventListener('click', predictImage);
 
     // --- 4. Model Loading Function ---
     async function loadModel() {
         try {
-            const modelURL = './model/model.json';
+            // This is a standard, pre-hosted MobileNetV2 model
+            const modelURL = 'https://tfhub.dev/google/tfjs-model/imagenet/mobilenet_v2_100_224/classification/3/default/1';
+            
             console.log('Attempting to load model from:', modelURL);
-            model = await tf.loadLayersModel(modelURL);
+            // Use loadGraphModel for TF Hub models
+            model = await tf.loadGraphModel(modelURL, {fromTFHub: true}); 
             
             console.log('Model Loaded Successfully');
-            status.innerText = 'Model Loaded. Please upload an image.';
-            model.summary();
+            status.innerText = 'MobileNetV2 Loaded. Please upload an image.';
             
         } catch (error) {
             console.error('Error loading model:', error);
