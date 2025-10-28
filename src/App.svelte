@@ -15,7 +15,7 @@
       .expandDims(0)  // Add batch dimension
       .toFloat()
       .div(tf.scalar(255));  // Normalize the image
-    
+
     const predictions = await model.predict(imageTensor).data();
     console.log(predictions);
   }
@@ -25,6 +25,8 @@
   <h1>Skin Cancer Prediction Model</h1>
   <input type="file" accept="image/*" on:change={event => predict(event.target.files[0])} />
 </main>
+
+<style src="./App.css"></style> <!-- Import the App.css file -->
 
 <style>
   main {
