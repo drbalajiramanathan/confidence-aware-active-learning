@@ -9,7 +9,7 @@
    <h1>TF.js Model Loader</h1>
    <input type="file" id="imageUpload" accept="image/*">
 <br>
-    <img id="uploadedImage" alt="Upload preview" style="width: 224px; height: 224px; margin-top: 10px; border: 1px solid #ccc; display: none;">
+   <img id="uploadedImage" alt="Upload preview" style="width: 224px; height: 224px; margin-top: 10px; border: 1px solid #ccc; display: none;">
 <br>
 <button id="predictButton" style="margin-top: 10px; font-size: 16px;">Predict</button>
 <p id="result" style="font-weight: bold; font-size: 18px; margin-top: 10px;">Result:</p>
@@ -55,28 +55,30 @@ async function predictImage() {
 
     const tensor = preprocessImage(uploadedImage);
 
-    // Run prediction
-    const prediction = await model.predict(tensor);
+    // Run prediction to get raw logits
+    const logits = model.predict(tensor);
 
-    // Get the prediction data (probabilities for 1000 classes)
-    const data = await prediction.data();
+    // Apply softmax to convert logits to probabilities
+    const probabilities = tf.softmax(logits);
+
+    // Get the probability data
+    const data = await probabilities.data();
 
     // Find the index with the highest probability
     const highestProbIndex = data.indexOf(Math.max(...data));
-    const confidence = data[highestProbIndex];
+    const confidence = data[highestProbIndex]; // This is now 0-1
 
-    // Display the generic result
-    // This model is trained on ImageNet, not HAM10000.
-    // It will predict things like 'dog', 'cat', 'car'.
+    // Display the correct result
     resultElement.innerText = `Result: ImageNet Class ID ${highestProbIndex}
 Confidence: ${(confidence * 100).toFixed(2)}%`;
 
     status.innerText = 'Prediction complete.';
     
+    // Clean up all tensors
     tensor.dispose();
-    prediction.dispose();
+    logits.dispose();
+    probabilities.dispose();
 }
-
 // --- 3. Event Listeners ---
 imageUpload.addEventListener('change', event => {
     const file = event.target.files[0];
