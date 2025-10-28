@@ -26,17 +26,5 @@
   <input type="file" accept="image/*" on:change={event => predict(event.target.files[0])} />
 </main>
 
-<style src="./App.css"></style> <!-- Import the App.css file -->
-
-<style>
-  main {
-    background-color: #f7f7f7;
-    padding: 2rem;
-    font-family: Arial, sans-serif;
-    color: #333;
-  }
-
-  h1 {
-    color: #8f74e2;
-  }
-</style>
+<!-- Import the App.css file -->
+<style src="./App.css"></style>
